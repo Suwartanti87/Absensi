@@ -7,6 +7,22 @@ async function main() {
 
     console.log("Mulai seeding...");
 
+    // ========================================
+    // WORK SCHEDULE (TUGAS KHAMILA)
+    // ========================================
+    // Menggunakan upsert agar data tidak duplikat jika seed dijalankan ulang
+    const morningShift = await prisma.workSchedule.upsert({
+        where: { id: 1 }, // ID manual untuk acuan seeding awal
+        update: {},
+        create: {
+            id: 1,
+            name: "Shift Pagi Regular",
+            startTime: "08:00",
+            endTime: "17:00",
+            lateTolerance: 15
+        }
+    });
+
     // DEPARTMENT
 
     const itDepartment = await prisma.department.upsert({
@@ -31,15 +47,16 @@ async function main() {
         }
     });
 
-    // EMPLOYEE 
+    // EMPLOYEE tanti (Sudah dihubungkan ke Work Schedule)
    
-
     const tanti = await prisma.employee.upsert({
         where: {
             employeeCode: "WD20260001"
         },
 
-        update: {},
+        update: {
+            workScheduleId: morningShift.id // Pastikan ter-update jika dijalankan ulang
+        },
 
         create: {
             employeeCode: "WD20260001",
@@ -49,19 +66,21 @@ async function main() {
             address: "Jakarta",
             position: "Staff IT",
             departmentId: itDepartment.id,
+            workScheduleId: morningShift.id, // Menghubungkan ke jadwal shift pagi
             status: "ACTIVE"
         }
     });
 
-    // EMPLOYEE 
+    // EMPLOYEE suwar (Sudah dihubungkan ke Work Schedule)
   
-
     const suwar = await prisma.employee.upsert({
         where: {
             employeeCode: "WD20260002"
         },
 
-        update: {},
+        update: {
+            workScheduleId: morningShift.id
+        },
 
         create: {
             employeeCode: "WD20260002",
@@ -71,6 +90,7 @@ async function main() {
             address: "Jakarta",
             position: "HR",
             departmentId: hrDepartment.id,
+            workScheduleId: morningShift.id, // Menghubungkan ke jadwal shift pagi
             status: "ACTIVE"
         }
     });
@@ -132,9 +152,12 @@ async function main() {
     console.log("=================================");
     console.log("SEED BERHASIL!");
     console.log("=================================");
+    console.log("Work Schedule:");
+    console.log("ID 1 → Shift Pagi Regular (08:00 - 17:00)");
+    console.log("---------------------------------");
     console.log("Employee:");
-    console.log("tanti  → WD20260001 → EMPLOYEE");
-    console.log("Suwar→ WD20260002 → HR_ADMIN");
+    console.log("tanti  → WD20260001 → EMPLOYEE (Shift Pagi)");
+    console.log("Suwar→ WD20260002 → HR_ADMIN (Shift Pagi)");
     console.log("---------------------------------");
     console.log("Username tanti  : tanti");
     console.log("Username suwar : suwar");
