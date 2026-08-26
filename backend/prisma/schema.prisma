@@ -1,0 +1,296 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+ 
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+// ========================================
+// ENUM
+// ========================================
+
+enum UserRole {
+  EMPLOYEE
+  HR_ADMIN
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  SICK
+  PERMISSION
+  LEAVE
+}
+
+enum RequestType {
+  SICK
+  PERMISSION
+  LEAVE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VisitorStatus {
+  CHECKED_IN
+  CHECKED_OUT
+}
+
+
+// ========================================
+// DEPARTMENT
+// ========================================
+
+model Department {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+
+  employees   Employee[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+
+// ========================================
+// EMPLOYEE
+// ========================================
+
+model Employee {
+  id              Int        @id @default(autoincrement())
+
+  employeeCode    String     @unique
+  name            String
+  email           String?    @unique
+  phone           String?
+  address         String?
+  position        String?
+  joinDate        DateTime?
+
+  status          EmployeeStatus @default(ACTIVE)
+
+  // Department
+  departmentId    Int
+  department      Department @relation(fields: [departmentId],references: [id])
+
+  // Login
+  user            User?
+
+  // Absensi
+  attendances     Attendance[]
+
+  // Pengajuan izin/sakit/cuti
+  requests        AttendanceRequest[]
+
+  // Pengajuan yang di-approve HR/Admin
+  approvedRequests AttendanceRequest[] @relation("ApprovedBy")
+
+  // Jadwal kerja
+  workScheduleId  Int?
+  workSchedule    WorkSchedule? @relation(fields: [workScheduleId],references: [id])
+
+  // Tamu yang menemui karyawan ini
+  visitorLogs     VisitorLog[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+
+// ========================================
+// USER
+// Untuk login dan menentukan role
+// ========================================
+
+model User {
+  id          Int      @id @default(autoincrement())
+
+  employeeId  Int      @unique
+
+  username    String   @unique
+  password    String
+
+  role        UserRole @default(EMPLOYEE)
+
+  employee    Employee @relation(fields: [employeeId],references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+// ========================================
+// WORK SCHEDULE
+// Jadwal kerja karyawan
+// ========================================
+
+model WorkSchedule {
+  id             Int      @id @default(autoincrement())
+
+  name           String
+
+  startTime      String
+  endTime        String
+
+  lateTolerance  Int      @default(15)
+
+  employees      Employee[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+
+// ========================================
+// ATTENDANCE
+// Data absensi harian
+// ========================================
+
+model Attendance {
+  id             Int              @id @default(autoincrement())
+
+  employeeId     Int
+
+  employee       Employee         @relation(fields: [employeeId],references: [id])
+
+  date           DateTime
+
+  checkIn        DateTime?
+  checkOut       DateTime?
+
+  status         AttendanceStatus @default(PRESENT)
+
+  lateMinutes    Int?
+  workDuration   Int?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // 1 karyawan hanya punya 1 data absensi dalam 1 hari
+  @@unique([employeeId, date])
+
+  @@index([employeeId])
+  @@index([date])
+}
+
+
+// ========================================
+// ATTENDANCE REQUEST
+// Izin / Sakit / Cuti
+// ========================================
+
+model AttendanceRequest {
+  id             Int            @id @default(autoincrement())
+
+  // Karyawan yang mengajukan
+  employeeId     Int
+
+  employee       Employee       @relation(fields: [employeeId],references: [id])
+
+  // Jenis pengajuan
+  type           RequestType
+
+  // Tanggal pengajuan
+  startDate      DateTime
+  endDate        DateTime
+
+  // Alasan
+  reason         String?
+
+  // Bukti surat sakit / dokumen
+  attachment     String?
+
+  // PENDING / APPROVED / REJECTED
+  status         RequestStatus @default(PENDING)
+
+  // HR/Admin yang melakukan approval
+  approvedById   Int?
+
+  approvedBy     Employee? @relation("ApprovedBy",fields: [approvedById],references: [id])
+
+  approvedAt     DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([approvedById])
+  @@index([status])
+}
+
+
+// ========================================
+// VISITOR
+// Data identitas tamu
+// ========================================
+
+model Visitor {
+  id           Int          @id @default(autoincrement())
+
+  name         String
+  phone        String?
+  email        String?
+  company      String?
+
+  visitorLogs  VisitorLog[]
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+
+// ========================================
+// VISITOR LOG
+// Riwayat kunjungan tamu
+// ========================================
+
+model VisitorLog {
+  id             Int           @id @default(autoincrement())
+
+  // Tamu
+  visitorId      Int
+
+  visitor        Visitor       @relation( fields: [visitorId],references: [id])
+
+  // Karyawan yang ditemui
+  employeeId     Int
+
+  employee       Employee      @relation(fields: [employeeId],references: [id] )
+
+  purpose        String
+
+  visitDate      DateTime
+
+  checkIn        DateTime?
+  checkOut       DateTime?
+
+  status         VisitorStatus @default(CHECKED_IN)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([visitorId])
+  @@index([employeeId])
+  @@index([visitDate])
+}
