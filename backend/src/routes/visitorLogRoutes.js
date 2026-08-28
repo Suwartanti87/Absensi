@@ -1,27 +1,17 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-const visitorLogController = require('../controllers/visitorLogController');
+// Impor controller menggunakan CommonJS
+const {
+  checkInVisitor,
+  checkOutVisitor,
+  getVisitorLogs
+} = require("../controllers/visitorLogController");
 
-// GET semua visitor log
-router.get('/', visitorLogController.getAllVisitorLogs);
+// Definisi endpoint
+router.get("/visitor-logs", getVisitorLogs);
+router.post("/visitor-logs/check-in", checkInVisitor);
+router.put("/visitor-logs/check-out/:id", checkOutVisitor);
 
-// GET visitor log berdasarkan ID
-router.get('/:id', visitorLogController.getVisitorLogById);
-
-// CREATE visitor log
-router.post('/', visitorLogController.createVisitorLog);
-
-// UPDATE visitor log
-router.put('/:id', visitorLogController.updateVisitorLog);
-
-// DELETE visitor log
-router.delete('/:id', visitorLogController.deleteVisitorLog);
-
-// CHECK IN
-router.patch('/:id/check-in', visitorLogController.checkIn);
-
-// CHECK OUT
-router.patch('/:id/check-out', visitorLogController.checkOut);
-
+// Ekspor router menggunakan CommonJS
 module.exports = router;
